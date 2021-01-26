@@ -1,85 +1,68 @@
 from django.db import models
+from  cloudinary.models import CloudinaryField
 from django.contrib.auth.models import User
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-from pyuploadcare.dj.models import ImageField
+from django.urls import reverse
+from django.core.validators import MaxValueValidator, MinValueValidator
 import datetime as dt
-
+from datetime import datetime, timedelta, date
 # Create your models here.
 
 class Profile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
-    profile_picture = models.ImageField(upload_to='images/', default='default.png')
-    bio = models.TextField(max_length=500, default="My Bio", blank=True)
-    name = models.CharField(blank=True, max_length=120)
-    location = models.CharField(max_length=60, blank=True)
-    contact = models.EmailField(max_length=100, blank=True)
+    user=models.OneToOneField(User,null=True, on_delete=models.CASCADE)
+    bio= models.CharField(max_length=100)
+    prof_pic= CloudinaryField('image')
 
     def __str__(self):
         return f'{self.user.username} Profile'
 
-    @receiver(post_save, sender=User)
-    def create_user_profile(sender, instance, created, **kwargs):
-        if created:
-            Profile.objects.create(user=instance)
+    def save(self):
+        super().save()
 
-    @receiver(post_save, sender=User)
-    def save_user_profile(sender, instance, **kwargs):
-        instance.profile.save()
-
-class Post(models.Model):
-    title = models.CharField(max_length=155)
-    url = models.URLField(max_length=255)
-    description = models.TextField(max_length=255)
-    technologies = models.CharField(max_length=200, blank=True)
-    photo = ImageField(manual_crop='1280x720')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="posts")
-    date = models.DateTimeField(auto_now_add=True, blank=True)
-
-    def __str__(self):
-        return f'{self.title}'
-
-    def delete_post(self):
+    def save_profile(self):
+        self.save()
+    
+    def delete_profile(self):
         self.delete()
 
-    @classmethod
-    def search_project(cls, title):
-        return cls.objects.filter(title__icontains=title).all()
+    def profiles_posts(self):
+        return self.image_set.all()
 
     @classmethod
-    def all_posts(cls):
-        return cls.objects.all()
+    def search_profile(cls, name):
+        return cls.objects.filter(user__username__icontains=name).all()
 
-    def save_post(self):
-        self.save()
 
-class Rating(models.Model):
-    rating = (
-        (5, '5'),
-        (6, '6'),
-        (7, '7'),
-        (8, '8'),
-        (9, '9'),
-        (10, '10'),
-    )
-
-    design = models.IntegerField(choices=rating, default=0, blank=True)
-    usability = models.IntegerField(choices=rating, blank=True)
-    content = models.IntegerField(choices=rating, blank=True)
-    score = models.FloatField(default=0, blank=True)
-    design_average = models.FloatField(default=0, blank=True)
-    usability_average = models.FloatField(default=0, blank=True)
-    content_average = models.FloatField(default=0, blank=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, related_name='rater')
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='ratings', null=True)
-
-    def save_rating(self):
-        self.save()
-
-    @classmethod
-    def get_ratings(cls, id):
-        ratings = Rating.objects.filter(post_id=id).all()
-        return ratings
+class Project(models.Model):
+    image= CloudinaryField('image')
+    author= models.ForeignKey(Profile, on_delete=models.CASCADE)
+    title= models.CharField(max_length=30)
+    description= models.CharField(max_length=50)
+    url=models.URLField()
+    likes=models.ManyToManyField(User, related_name='blog_posts')
+    pub_date=models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.post} Rating'
+        return self.title
+
+    def total_likes(self):
+        return self.likes.count()
+    
+    def save_image(self):
+        self.save()
+    
+    def delete_image(self):
+        self.delete()
+    
+    def update_image(self):
+        self._do_update()
+    
+    def get_absolute_url(self):
+        return reverse('post-detail', kwargs={'pk':self.pk})
+
+class Rating(models.Model):
+    project=models.ForeignKey(Project, on_delete=models.CASCADE)
+    author= models.ForeignKey(Profile, on_delete=models.CASCADE)
+    stars = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    class Meta:
+        unique_together=(('author', 'project'))
+        index_together=(('author', 'project'))
