@@ -10,8 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
-from pathlib import Path
-import os
+from pathlib import Path,os
 import django_heroku
 import dj_database_url
 from decouple import config,Csv
