@@ -36,3 +36,10 @@ class ProjectForm(forms.ModelForm):
     class Meta:
         model=Project
         fields=['title', 'image', 'description', 'url']
+
+class SignUpForm(UserCreationForm):
+    email = forms.EmailField(help_text='Enter Email!')
+    
+    class Meta:
+        model = User
+        fields = ('username','email','password1','password2')

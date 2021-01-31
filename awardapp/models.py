@@ -32,14 +32,16 @@ class Profile(models.Model):
         return cls.objects.filter(user__username__icontains=name).all()
 
 
+
 class Project(models.Model):
     image= CloudinaryField('image')
-    author= models.ForeignKey(Profile, on_delete=models.CASCADE)
+    author= models.ForeignKey(Profile, on_delete=models.CASCADE,default=None, null=True, blank=True)
     title= models.CharField(max_length=30)
     description= models.CharField(max_length=50)
     url=models.URLField()
     likes=models.ManyToManyField(User, related_name='blog_posts')
     pub_date=models.DateTimeField(auto_now_add=True)
+    user=models.OneToOneField(User,null=True, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.title
@@ -55,6 +57,12 @@ class Project(models.Model):
     
     def update_image(self):
         self._do_update()
+
+    @classmethod
+    def user_pics(cls,user):
+        user_pic = cls.objects.filter(user = user)
+        return user_pic
+
     
     def get_absolute_url(self):
         return reverse('post-detail', kwargs={'pk':self.pk})
